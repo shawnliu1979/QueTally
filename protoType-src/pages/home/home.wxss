@@ -1,0 +1,41 @@
+.home {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.brand-stamp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84rpx;
+  height: 84rpx;
+  margin-top: 42rpx;
+  color: #a13e2e;
+  border: 4rpx solid #a13e2e;
+  font-family: "Songti SC", serif;
+  font-size: 52rpx;
+  font-weight: 700;
+}
+
+.intro {
+  margin-top: 66rpx;
+  color: #4a5d54;
+  font-family: "Songti SC", serif;
+  font-size: 32rpx;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  margin-top: auto;
+  padding-bottom: 50rpx;
+}
+
+.home-foot {
+  color: #8c918a;
+  font-size: 22rpx;
+  letter-spacing: 2rpx;
+  text-align: center;
+}

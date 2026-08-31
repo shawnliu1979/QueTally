@@ -1,0 +1,25 @@
+<view class="page-shell table-page">
+  <view class="table-head"><view><view class="eyebrow">ROUND 01</view><view class="table-title">春风一局</view></view><button class="round-state" bindtap="openIncoming">待确认 1</button></view>
+  <view class="my-score paper-card"><view class="score-caption">我的当前点数</view><view class="large-score">{{score}}</view><view class="score-caption">点</view></view>
+  <view class="member-title">选择一位成员，记下一笔点数</view>
+  <view class="member-grid">
+    <button class="member-tile paper-card" wx:for="{{players}}" wx:key="name" data-name="{{item.name}}" bindtap="openPayment">
+      <view class="avatar {{item.tone}}">{{item.glyph}}</view><view class="member-name">{{item.name}}</view>
+    </button>
+  </view>
+  <view class="bottom-links"><button class="detail-link" bindtap="openDetail">局内明细</button><button class="settle-link" bindtap="goSettle">结算本局</button></view>
+  <view wx:if="{{modal === 'payment'}}" class="modal-mask" bindtap="closeModal">
+    <view class="transfer-modal" catchtap="stopModalTap">
+      <view class="modal-kicker">给付点数给</view><view class="modal-title">{{selectedPlayer}}</view>
+      <view class="amount-field"><input type="number" placeholder="输入点数" value="{{amount}}" bindinput="changeAmount" /><text>点</text></view>
+      <view class="modal-note">确认后等待对方核对</view>
+      <view class="modal-actions"><button class="secondary-action modal-button" bindtap="closeModal">返回</button><button class="primary-action modal-button" bindtap="confirmPayment">确认</button></view>
+    </view>
+  </view>
+  <view wx:if="{{modal === 'incoming'}}" class="modal-mask" bindtap="closeModal">
+    <view class="transfer-modal" catchtap="stopModalTap"><view class="modal-kicker">收到一笔划转</view><view class="modal-title">阿雯 → 我</view><view class="incoming-score">+ 60 点</view><view class="transfer-note">点数小记：550 点 → 610 点</view><view class="modal-actions"><button class="secondary-action modal-button" bindtap="rejectIncoming">拒绝</button><button class="primary-action modal-button" bindtap="acceptIncoming">确认</button></view></view>
+  </view>
+  <view wx:if="{{modal === 'detail'}}" class="modal-mask detail-mask" bindtap="closeModal">
+    <view class="detail-modal" catchtap="stopModalTap"><view class="modal-head"><view><view class="modal-kicker">ROUND 01 / RECORDS</view><view class="detail-title">局内明细</view></view><button class="close-button" bindtap="closeModal">返回</button></view><view class="detail-summary"><text>共 3 笔记录</text><text>含 1 笔确认中</text></view><scroll-view scroll-y class="detail-records"><view class="detail-record" wx:for="{{records}}" wx:key="time"><view class="record-top"><text class="record-name">{{item.direction}}</text><text class="record-amount {{item.type}}">{{item.amount}}</text></view><view class="record-meta"><text>{{item.time}}</text><text>{{item.status}}</text></view><view class="record-note">点数小记：{{item.before}} 点 → {{item.after}} 点</view></view></scroll-view></view>
+  </view>
+</view>

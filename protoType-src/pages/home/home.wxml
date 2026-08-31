@@ -1,0 +1,12 @@
+<view class="page-shell home">
+  <view class="eyebrow">QUE TALLY</view>
+  <view class="page-title">雀帐</view>
+  <view class="rule"></view>
+  <view class="brand-stamp">雀</view>
+  <view class="intro">{{tagline}}</view>
+  <view class="actions">
+    <button class="primary-action" bindtap="createGame">组一个局</button>
+    <button class="secondary-action" bindtap="joinGame">加入别人</button>
+  </view>
+  <view class="home-foot">禁止赌博！本App仅作娱乐记分使用</view>
+</view>
