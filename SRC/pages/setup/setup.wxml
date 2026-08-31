@@ -1,0 +1,52 @@
+<view class="page-shell" wx:if="{{game}}">
+	<view class="eyebrow">ROUND SETTINGS</view>
+	<view class="page-title">确认本局</view>
+	<view class="rule"></view>
+
+	<view class="section-label">本局成员</view>
+	<view class="paper-card players-card">
+		<view class="player-row" wx:for="{{players}}" wx:key="openId">
+			<image
+				wx:if="{{item.avatarDisplayUrl}}"
+				class="avatar-image"
+				src="{{item.avatarDisplayUrl}}"
+				mode="aspectFill"
+				data-index="{{index}}"
+				binderror="fallbackAvatar"
+			/>
+			<view wx:else class="avatar {{item.tone}}">{{item.glyph}}</view>
+			<view class="player-name">{{item.name}}</view>
+			<view class="player-mark">{{item.isOwner ? '发起人' : '已加入'}}</view>
+		</view>
+	</view>
+
+	<view wx:if="{{isOwner}}" class="invite-line" bindtap="shareGame">
+		邀请好友 · 邀请码 {{game.inviteCode}}
+	</view>
+
+	<view class="section-label score-label">初始点数</view>
+	<view class="paper-card score-card">
+		<input
+			class="score-input"
+			type="number"
+			value="{{score}}"
+			disabled="{{!isOwner || isStarting}}"
+			bindinput="changeScore"
+		/>
+		<view class="score-unit">点 / 人</view>
+	</view>
+
+	<view wx:if="{{!isOwner && !isStarting}}" class="wait-tip">等待发起人开始本局</view>
+	<view wx:if="{{isStarting}}" class="wait-tip">开始（{{countdown}} 秒）</view>
+
+	<view class="setup-actions">
+		<button
+			class="primary-action {{!isOwner || isStarting ? 'action-disabled' : ''}}"
+			disabled="{{!isOwner || isStarting}}"
+			bindtap="startGame"
+		>
+			{{isStarting ? '开始（' + countdown + ' 秒）' : (isOwner ? '开始' : '开始（等待中）')}}
+		</button>
+		<button class="secondary-action" bindtap="cancel">取消</button>
+	</view>
+</view>

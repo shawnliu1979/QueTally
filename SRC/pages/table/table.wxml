@@ -1,0 +1,84 @@
+<view class="page-shell table-page" wx:if="{{round}}">
+	<view class="table-head">
+		<view>
+			<view class="eyebrow">ROUND {{round.game.roundNo}}</view>
+			<view class="table-title">{{round.game.title}}</view>
+		</view>
+		<button class="round-state" bindtap="openIncoming">待确认 {{round.pendingCount}}</button>
+	</view>
+
+	<view class="my-score paper-card">
+		<view class="score-caption">我的当前点数</view>
+		<view class="large-score">{{round.myBalance}}</view>
+		<view class="score-caption">点</view>
+	</view>
+
+	<view class="member-title">选择一位成员，记下一笔点数</view>
+	<view class="member-grid">
+		<button
+			class="member-tile paper-card"
+			wx:for="{{round.others}}"
+			wx:key="openId"
+			data-player="{{item}}"
+			bindtap="openPayment"
+		>
+			<image
+				wx:if="{{item.avatarDisplayUrl}}"
+				class="avatar-image"
+				src="{{item.avatarDisplayUrl}}"
+				mode="aspectFill"
+				data-index="{{index}}"
+				data-open-id="{{item.openId}}"
+				binderror="fallbackAvatar"
+			/>
+			<view wx:else class="avatar {{item.tone}}">{{item.glyph}}</view>
+			<view class="member-name">{{item.name}}</view>
+		</button>
+	</view>
+
+	<view class="bottom-links">
+		<button class="detail-link" bindtap="openDetail">局内明细</button>
+		<button class="settle-link" bindtap="goSettle">结算本局</button>
+	</view>
+
+	<view wx:if="{{modal === 'payment'}}" class="modal-mask" bindtap="closeModal">
+		<view class="transfer-modal" catchtap="stopModalTap">
+			<view class="modal-kicker">给付点数给</view>
+			<view class="modal-title">{{selectedPlayer.name}}</view>
+			<view class="amount-field">
+				<input type="number" placeholder="输入点数" value="{{amount}}" bindinput="changeAmount" />
+				<text>点</text>
+			</view>
+			<view class="modal-note">确认后等待对方核对，超过 2 分钟自动撤回</view>
+			<view class="modal-actions">
+				<button class="secondary-action modal-button" bindtap="closeModal">返回</button>
+				<button class="primary-action modal-button" bindtap="confirmPayment">确认</button>
+			</view>
+		</view>
+	</view>
+
+	<view wx:if="{{modal === 'incoming'}}" class="modal-mask" bindtap="closeModal">
+		<view class="transfer-modal" catchtap="stopModalTap">
+			<view class="modal-kicker">收到一笔划转</view>
+			<view class="modal-title">{{incoming.fromName}} → 我</view>
+			<view class="incoming-score">+ {{incoming.amount}} 点</view>
+			<view class="transfer-note">点数小记：{{incoming.before}} 点 → {{incoming.after}} 点</view>
+			<view class="modal-actions">
+				<button
+					class="secondary-action modal-button"
+					data-accept="{{false}}"
+					bindtap="respondIncoming"
+				>
+					拒绝
+				</button>
+				<button
+					class="primary-action modal-button"
+					data-accept="{{true}}"
+					bindtap="respondIncoming"
+				>
+					确认
+				</button>
+			</view>
+		</view>
+	</view>
+</view>
