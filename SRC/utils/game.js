@@ -1,23 +1,12 @@
-const { REFRESH_INTERVAL_MS } = require('../config')
-
-const READ_ACTIONS = ['myActiveGame', 'getGame', 'getRound', 'getSettlement']
-const responseCache = new Map()
+const READ_ACTIONS = ['getMyProfile', 'myActiveGame', 'getGame', 'getRound', 'getSettlement']
 const pendingCalls = new Map()
 
 const requestKey = (action, data) => `${action}:${JSON.stringify(data)}`
-const clearReadCache = () => {
-  responseCache.clear()
-  pendingCalls.clear()
-}
 
 const call = (action, data = {}) => {
   const isRead = READ_ACTIONS.includes(action)
   const key = requestKey(action, data)
-  const cached = responseCache.get(key)
 
-  if (isRead && cached && Date.now() - cached.createdAt < REFRESH_INTERVAL_MS) {
-    return Promise.resolve(cached.data)
-  }
   if (isRead && pendingCalls.has(key)) return pendingCalls.get(key)
 
   const request = wx.cloud.callFunction({
@@ -25,8 +14,6 @@ const call = (action, data = {}) => {
     data: { action, ...data }
   }).then(({ result }) => {
     if (!result || !result.ok) throw new Error((result && result.message) || '请求失败，请稍后重试')
-    if (isRead) responseCache.set(key, { data: result.data, createdAt: Date.now() })
-    else clearReadCache()
     return result.data
   }).finally(() => pendingCalls.delete(key))
 
@@ -34,12 +21,21 @@ const call = (action, data = {}) => {
   return request
 }
 
-const getProfile = () => new Promise(resolve => {
-  wx.getUserProfile({
-    desc: '用于在本局中展示你的称呼',
-    success: result => resolve(result.userInfo.nickName || '牌友'),
-    fail: () => resolve('牌友')
-  })
-})
+const PROFILE_STORAGE_KEY = 'quetally-profile'
 
-module.exports = { call, getProfile }
+const getStoredProfile = () => wx.getStorageSync(PROFILE_STORAGE_KEY) || null
+const saveProfile = profile => wx.setStorageSync(PROFILE_STORAGE_KEY, profile)
+
+const uploadAvatar = async filePath => {
+  if (filePath.startsWith('cloud://')) return filePath
+  const extension = (filePath.match(/\.[a-zA-Z0-9]+$/) || ['.png'])[0]
+  const result = await wx.cloud.uploadFile({
+    cloudPath: `avatars/${Date.now()}-${Math.random().toString(36).slice(2)}${extension}`,
+    filePath
+  })
+  return result.fileID
+}
+
+const avatarDisplayUrl = avatarUrl => avatarUrl || ''
+
+module.exports = { call, getStoredProfile, saveProfile, uploadAvatar, avatarDisplayUrl }

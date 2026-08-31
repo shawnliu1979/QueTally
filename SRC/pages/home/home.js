@@ -1,18 +1,22 @@
-const { call, getProfile } = require('../../utils/game')
+const { call, getStoredProfile, saveProfile, uploadAvatar } = require('../../utils/game')
 const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS } = require('../../config')
 
 Page({
-  data: { tagline: '', inviteCode: '', activeGameId: '' },
+  data: { tagline: '', inviteCode: '', activeGameId: '', profileAction: '', profileName: '', profileAvatarUrl: '', pendingInviteCode: '' },
 
   onLoad(options) {
     const taglines = ['一局有终，心中有数。', '牌有起落，心有分寸。', '输赢一时，情谊一局。', '一桌相逢，尽兴便好。', '点数归零，笑意长留。', '落子有声，来去从容。']
-    this.setData({ tagline: taglines[Math.floor(Math.random() * taglines.length)], inviteCode: options.invite || '' })
-    if (options.invite) this.joinGame()
+    this.setData({
+      tagline: taglines[Math.floor(Math.random() * taglines.length)],
+      inviteCode: options.invite || '',
+      pendingInviteCode: options.invite || ''
+    })
+    this.loadProfile()
   },
 
   onShow() {
     this.isPageVisible = true
-    if (!this.data.inviteCode) this.resumeGame()
+    if (this.isProfileReady && !this.data.profileAction && !this.data.inviteCode) this.resumeGame()
   },
 
   onHide() { this.isPageVisible = false; this.stopResumeTimers() },
@@ -26,10 +30,11 @@ Page({
   },
 
   async resumeGame() {
-    if (!this.isPageVisible || this.isRedirecting || this.isCheckingGame) return
+    if (!this.isPageVisible || this.isManualEntry || this.isRedirecting || this.isCheckingGame) return
     this.isCheckingGame = true
     try {
       const result = await call('myActiveGame')
+      if (this.isManualEntry) return
       const game = result.game || result
       if (!game || !game._id) return this.scheduleNextCheck(REFRESH_INTERVAL_MS)
       this.isRedirecting = true
@@ -69,14 +74,69 @@ Page({
     })
   },
 
-  async createGame() {
+  async loadProfile() {
     try {
-      wx.showLoading({ title: '创建中' })
-      const name = await getProfile()
-      const game = await call('createGame', { name })
-      this.enterGame({ ...game, status: 'preparing' })
+      const profile = await call('getMyProfile')
+      this.isProfileReady = true
+      if (profile) {
+        saveProfile(profile)
+        this.profile = profile
+        this.setData({ profileAction: '', profileName: profile.name, profileAvatarUrl: profile.avatarUrl })
+        if (this.data.pendingInviteCode) return this.joinWithProfile(this.data.pendingInviteCode)
+        if (this.isPageVisible) this.resumeGame()
+        return
+      }
+      const cachedProfile = getStoredProfile()
+      this.setData({
+        profileAction: 'profile',
+        profileName: cachedProfile ? cachedProfile.name : '',
+        profileAvatarUrl: cachedProfile ? cachedProfile.avatarUrl : ''
+      })
+    } catch (error) {
+      wx.showToast({ title: '无法读取个人资料，请检查网络', icon: 'none' })
+    }
+  },
+
+  chooseAvatar(event) { this.setData({ profileAvatarUrl: event.detail.avatarUrl }) },
+  changeProfileName(event) { this.setData({ profileName: event.detail.value }) },
+
+  async submitProfile() {
+    const { profileName, profileAvatarUrl, pendingInviteCode } = this.data
+    const name = profileName.trim()
+    if (!profileAvatarUrl) return wx.showToast({ title: '请选择头像', icon: 'none' })
+    if (!name) return wx.showToast({ title: '请输入昵称', icon: 'none' })
+    try {
+      wx.showLoading({ title: '保存资料' })
+      const profile = { name, avatarUrl: await uploadAvatar(profileAvatarUrl) }
+      await call('saveMyProfile', { profile })
+      saveProfile(profile)
+      this.profile = profile
+      this.isProfileReady = true
+      this.setData({ profileAction: '', profileAvatarUrl: profile.avatarUrl })
+      if (pendingInviteCode) return this.joinWithProfile(pendingInviteCode)
+      this.resumeGame()
     } catch (error) {
       wx.showToast({ title: error.message, icon: 'none' })
+    } finally { wx.hideLoading() }
+  },
+
+  createGame() {
+    if (!this.isProfileReady || !this.profile) return
+    this.createWithProfile()
+  },
+
+  async createWithProfile() {
+    if (this.isManualEntry) return
+    this.isManualEntry = true
+    this.stopResumeTimers()
+    try {
+      wx.showLoading({ title: '创建中' })
+      const game = await call('createGame')
+      this.enterGame({ ...game, status: 'preparing' })
+    } catch (error) {
+      this.isManualEntry = false
+      wx.showToast({ title: error.message, icon: 'none' })
+      this.scheduleNextCheck(REFRESH_INTERVAL_MS)
     } finally { wx.hideLoading() }
   },
 
@@ -90,15 +150,24 @@ Page({
     })
   },
 
-  async joinByCode(inviteCode) {
+  joinByCode(inviteCode) {
     if (!inviteCode) return wx.showToast({ title: '请输入邀请码', icon: 'none' })
+    if (!this.isProfileReady || !this.profile) return this.setData({ profileAction: 'profile', pendingInviteCode: inviteCode })
+    this.joinWithProfile(inviteCode)
+  },
+
+  async joinWithProfile(inviteCode) {
+    if (this.isManualEntry) return
+    this.isManualEntry = true
+    this.stopResumeTimers()
     try {
       wx.showLoading({ title: '加入中' })
-      const name = await getProfile()
-      const game = await call('joinGame', { inviteCode, name })
+      const game = await call('joinGame', { inviteCode })
       this.enterGame({ ...game, status: 'preparing' })
     } catch (error) {
+      this.isManualEntry = false
       wx.showToast({ title: error.message, icon: 'none' })
+      this.scheduleNextCheck(REFRESH_INTERVAL_MS)
     } finally { wx.hideLoading() }
   }
 })

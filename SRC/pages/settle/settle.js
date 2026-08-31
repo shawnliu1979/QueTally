@@ -14,7 +14,11 @@ Page({
   async finish() {
     if (!this.data.isOwner) return
     if (this.data.summary.pendingCount) return wx.showToast({ title: '请先处理待确认记录', icon: 'none' })
-    try { await call('settleGame', { gameId: this.data.gameId }); wx.showToast({ title: '本局已结算', icon: 'none' }); this.refresh() }
+    try {
+      await call('settleGame', { gameId: this.data.gameId })
+      wx.showToast({ title: '本局已结算', icon: 'none' })
+      wx.reLaunch({ url: '/pages/home/home' })
+    }
     catch (error) { wx.showToast({ title: error.message, icon: 'none' }) }
   }
 })

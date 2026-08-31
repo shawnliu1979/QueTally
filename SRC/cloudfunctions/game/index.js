@@ -4,12 +4,36 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 const GAME = db.collection('games')
+const PROFILE = db.collection('profiles')
 const TRANSFER = db.collection('transfers')
 const ACTIVE = ['preparing', 'starting', 'active']
 const TONES = ['green', 'red', 'yellow', 'blue', 'green']
 
 const fail = message => { throw new Error(message) }
 const code = () => Math.random().toString(36).slice(2, 8).toUpperCase()
+const profileFromEvent = profile => ({
+  name: typeof profile?.name === 'string' && profile.name.trim() ? profile.name.trim().slice(0, 32) : '牌友',
+  avatarUrl: typeof profile?.avatarUrl === 'string' ? profile.avatarUrl : ''
+})
+const getProfile = async openId => {
+  try {
+    const result = await PROFILE.doc(openId).get()
+    return result.data
+  } catch (error) {
+    return null
+  }
+}
+const hydrateMembers = async members => {
+  const result = await PROFILE.where({ openId: _.in(members.map(member => member.openId)) }).get()
+  const profiles = result.data.reduce((items, profile) => {
+    items[profile.openId] = profile
+    return items
+  }, {})
+  return members.map(member => {
+    const profile = profiles[member.openId]
+    return profile ? { ...member, name: profile.name, avatarUrl: profile.avatarUrl, glyph: profile.name.slice(0, 1) } : member
+  })
+}
 const memberView = (member, game) => ({ ...member, isOwner: member.openId === game.ownerOpenId })
 const assertMember = (game, openId) => { if (!game || !game.memberOpenIds.includes(openId)) fail('你不在这个局内') }
 const getGame = async gameId => { const result = await GAME.doc(gameId).get(); return result.data }
@@ -25,7 +49,7 @@ const expire = async transfers => Promise.all(transfers.filter(item => item.stat
 const transfersFor = async gameId => { const result = await TRANSFER.where({ gameId }).orderBy('createdAt', 'desc').limit(100).get(); await expire(result.data); return (await TRANSFER.where({ gameId }).orderBy('createdAt', 'desc').limit(100).get()).data }
 const publicRound = async (game, openId) => {
   const transfers = await transfersFor(game._id)
-  const members = game.members.map(item => memberView(item, game))
+  const members = (await hydrateMembers(game.members)).map(item => memberView(item, game))
   const own = members.find(item => item.openId === openId)
   const relatedTransfers = transfers.filter(item => item.fromOpenId === openId || item.toOpenId === openId).map(item => {
     const beforeBalance = balance(transfers.filter(record => record.createdAt < item.createdAt), openId, game.initialScore)
@@ -40,6 +64,13 @@ const publicRound = async (game, openId) => {
 exports.main = async event => {
   const { OPENID: openId } = cloud.getWXContext()
   try {
+    if (event.action === 'getMyProfile') return { ok: true, data: await getProfile(openId) }
+    if (event.action === 'saveMyProfile') {
+      const profile = profileFromEvent(event.profile)
+      if (!profile.avatarUrl) fail('请选择头像')
+      await PROFILE.doc(openId).set({ data: { openId, ...profile, updatedAt: Date.now() } })
+      return { ok: true, data: profile }
+    }
     if (event.action === 'myActiveGame') {
       const result = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
       const game = await activateStartedGame(result.data[0])
@@ -48,7 +79,9 @@ exports.main = async event => {
     if (event.action === 'createGame') {
       const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
       if (existing.data.length) fail('你还在一个未结束的局里')
-      const member = { openId, name: event.name || '牌友', glyph: (event.name || '牌友').slice(0, 1), tone: TONES[0] }
+      const profile = await getProfile(openId)
+      if (!profile) fail('请先完成个人资料设置')
+      const member = { openId, ...profile, glyph: profile.name.slice(0, 1), tone: TONES[0] }
       const result = await GAME.add({ data: { title: '春风一局', roundNo: 1, ownerOpenId: openId, memberOpenIds: [openId], members: [member], initialScore: 550, inviteCode: code(), status: 'preparing', createdAt: Date.now(), updatedAt: Date.now() } })
       return { ok: true, data: { _id: result._id } }
     }
@@ -59,14 +92,16 @@ exports.main = async event => {
       const game = result.data[0]
       if (!game) fail('该邀请码没有待开始的局')
       if (game.members.length >= 5) fail('本局人数已满')
-      const name = event.name || '牌友'
-      const member = { openId, name, glyph: name.slice(0, 1), tone: TONES[game.members.length] }
+      const profile = await getProfile(openId)
+      if (!profile) fail('请先完成个人资料设置')
+      const member = { openId, ...profile, glyph: profile.name.slice(0, 1), tone: TONES[game.members.length] }
       await GAME.doc(game._id).update({ data: { members: [...game.members, member], memberOpenIds: [...game.memberOpenIds, openId], updatedAt: Date.now() } })
       return { ok: true, data: { _id: game._id } }
     }
+    if (typeof event.gameId !== 'string' || !event.gameId) fail('对局参数无效，请返回首页后重试')
     const game = await activateStartedGame(await getGame(event.gameId))
     assertMember(game, openId)
-    if (event.action === 'getGame') return { ok: true, data: { ...game, members: game.members.map(item => memberView(item, game)), isOwner: game.ownerOpenId === openId } }
+    if (event.action === 'getGame') return { ok: true, data: { ...game, members: (await hydrateMembers(game.members)).map(item => memberView(item, game)), isOwner: game.ownerOpenId === openId } }
     if (event.action === 'getRound') return { ok: true, data: await publicRound(game, openId) }
     if (event.action === 'startGame') {
       if (game.ownerOpenId !== openId) fail('只有发起人可以开始')
@@ -92,6 +127,7 @@ exports.main = async event => {
       return { ok: true, data: { _id: result._id } }
     }
     if (event.action === 'respondTransfer') {
+      if (typeof event.transferId !== 'string' || !event.transferId) fail('划转记录无效，请刷新后重试')
       const result = await TRANSFER.doc(event.transferId).get(); const transfer = result.data
       if (!transfer || transfer.gameId !== game._id || transfer.toOpenId !== openId) fail('没有可处理的划转')
       if (transfer.status !== 'pending' || transfer.expiresAt <= Date.now()) { if (transfer.status === 'pending') await TRANSFER.doc(transfer._id).update({ data: { status: 'expired', updatedAt: Date.now() } }); fail('该划转已超时') }

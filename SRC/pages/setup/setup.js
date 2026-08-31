@@ -1,8 +1,8 @@
-const { call } = require('../../utils/game')
-const { JOINER_START_COUNTDOWN_MS, REFRESH_INTERVAL_MS } = require('../../config')
+const { call, avatarDisplayUrl } = require('../../utils/game')
+const { REFRESH_INTERVAL_MS } = require('../../config')
 
 Page({
-  data: { gameId: '', game: null, players: [], score: '550', isOwner: false, countdown: 0, isStarting: false, isJoinerCountdown: false },
+  data: { gameId: '', game: null, players: [], score: '550', isOwner: false, countdown: 0, isStarting: false },
 
   onLoad(options) { this.setData({ gameId: options.gameId }); this.refresh() },
   onShow() { this.isPageVisible = true; if (this.data.gameId) this.refresh() },
@@ -21,13 +21,11 @@ Page({
     this.isRefreshing = true
     try {
       const game = await call('getGame', { gameId: this.data.gameId })
+      game.members = game.members.map(member => ({ ...member, avatarDisplayUrl: avatarDisplayUrl(member.avatarUrl) }))
       this.setData({ game, players: game.members, score: String(game.initialScore), isOwner: game.isOwner })
-      if (game.status === 'starting') return this.startCountdown(Math.max(0, game.startsAt - Date.now()), false)
-      if (game.status === 'active') {
-        if (game.isOwner) return wx.redirectTo({ url: `/pages/table/table?gameId=${game._id}` })
-        return this.startCountdown(JOINER_START_COUNTDOWN_MS, true)
-      }
-      this.setData({ isStarting: false, isJoinerCountdown: false, countdown: 0 })
+      if (game.status === 'starting') return this.startCountdown(Math.max(0, game.startsAt - Date.now()))
+      if (game.status === 'active') return wx.redirectTo({ url: `/pages/table/table?gameId=${game._id}` })
+      this.setData({ isStarting: false, countdown: 0 })
       this.scheduleNextRefresh(REFRESH_INTERVAL_MS)
     } catch (error) { this.stopTimers(); wx.reLaunch({ url: '/pages/home/home' }) }
     finally { this.isRefreshing = false }
@@ -42,19 +40,18 @@ Page({
     }, interval)
   },
 
-  startCountdown(milliseconds, isJoinerCountdown) {
+  startCountdown(milliseconds) {
     if (this.countdownTimer) return
     clearTimeout(this.timer)
     this.timer = null
     const endsAt = Date.now() + milliseconds
     const update = () => {
       const countdown = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
-      this.setData({ countdown, isStarting: !isJoinerCountdown, isJoinerCountdown })
+      this.setData({ countdown, isStarting: true })
       if (!countdown) {
         clearInterval(this.countdownTimer)
         this.countdownTimer = null
-        if (isJoinerCountdown) wx.redirectTo({ url: `/pages/table/table?gameId=${this.data.gameId}` })
-        else setTimeout(() => this.refresh(), 0)
+        setTimeout(() => this.refresh(), 0)
       }
     }
     this.countdownTimer = setInterval(update, 250)
@@ -62,6 +59,11 @@ Page({
   },
 
   changeScore(event) { this.setData({ score: event.detail.value }) },
+
+  fallbackAvatar(event) {
+    const index = event.currentTarget.dataset.index
+    this.setData({ [`players[${index}].avatarDisplayUrl`]: '' })
+  },
 
   async startGame() {
     if (!this.data.isOwner) return
@@ -74,7 +76,11 @@ Page({
 
   shareGame() {
     wx.showShareMenu({ withShareTicket: false })
-    wx.showToast({ title: `邀请码：${this.data.game.inviteCode}`, icon: 'none', duration: 2500 })
+    wx.setClipboardData({
+      data: this.data.game.inviteCode,
+      success: () => wx.showToast({ title: '邀请码已复制', icon: 'success' }),
+      fail: () => wx.showToast({ title: `邀请码：${this.data.game.inviteCode}`, icon: 'none', duration: 2500 })
+    })
   },
 
   onShareAppMessage() {

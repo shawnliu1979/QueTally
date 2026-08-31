@@ -1,1 +1,26 @@
-<view class="page-shell home"><view class="eyebrow">QUE TALLY</view><view class="page-title">雀帐</view><view class="rule"></view><view class="brand-stamp">雀</view><view class="intro">{{tagline}}</view><view class="actions"><button class="primary-action" bindtap="createGame">组一个局</button><button class="secondary-action" bindtap="joinGame">加入别人</button></view><view class="home-foot">禁止赌博！本 App 仅作娱乐记分使用</view></view>
+<view class="page-shell home">
+	<view class="eyebrow">QUE TALLY</view>
+	<view class="page-title">雀帐</view>
+	<view class="rule"></view>
+	<view class="brand-stamp">雀</view>
+	<view class="intro">{{tagline}}</view>
+	<view class="actions">
+		<button class="primary-action" bindtap="createGame">组一个局</button>
+		<button class="secondary-action" bindtap="joinGame">加入别人</button>
+	</view>
+	<view class="home-foot">禁止赌博！本 App 仅作娱乐记分使用</view>
+
+	<view wx:if="{{profileAction}}" class="profile-mask">
+		<view class="profile-sheet paper-card" catchtap="">
+			<view class="profile-title">确认你的局内称呼</view>
+			<button class="profile-avatar-button" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
+				<image wx:if="{{profileAvatarUrl}}" class="profile-avatar" src="{{profileAvatarUrl}}" mode="aspectFill" />
+				<view wx:else class="profile-avatar-placeholder">选头像</view>
+			</button>
+			<input class="profile-name-input" type="nickname" placeholder="输入昵称" value="{{profileName}}" bindinput="changeProfileName" />
+			<view class="profile-actions">
+				<button class="primary-action profile-submit" bindtap="submitProfile">确认</button>
+			</view>
+		</view>
+	</view>
+</view>
