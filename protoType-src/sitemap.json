@@ -1,4 +1,9 @@
 {
   "desc": "UI prototype sitemap",
-  "rules": []
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
 }
