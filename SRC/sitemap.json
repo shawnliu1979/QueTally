@@ -1,0 +1,9 @@
+{
+  "desc": "QueTally sitemap",
+  "rules": [
+    {
+      "action": "allow",
+      "page": "*"
+    }
+  ]
+}

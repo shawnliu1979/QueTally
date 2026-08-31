@@ -1,0 +1,108 @@
+const { call, getProfile } = require('../../utils/game')
+
+const ACTIVE_GAME_REDIRECT_DELAY_MS = 3 * 1000
+const REFRESH_INTERVAL_MS = 5 * 1000
+
+Page({
+  data: { tagline: '', inviteCode: '', activeGameId: '' },
+
+  onLoad(options) {
+    const taglines = ['一局有终，心中有数。', '牌有起落，心有分寸。', '输赢一时，情谊一局。', '一桌相逢，尽兴便好。', '点数归零，笑意长留。', '落子有声，来去从容。']
+    this.setData({ tagline: taglines[Math.floor(Math.random() * taglines.length)], inviteCode: options.invite || '' })
+    if (options.invite) this.joinGame()
+  },
+
+  onShow() {
+    this.isPageVisible = true
+    if (!this.data.inviteCode) this.resumeGame()
+  },
+
+  onHide() { this.isPageVisible = false; this.stopResumeTimers() },
+  onUnload() { this.isPageVisible = false; this.stopResumeTimers() },
+
+  stopResumeTimers() {
+    clearTimeout(this.pollTimer)
+    clearTimeout(this.redirectTimer)
+    this.pollTimer = null
+    this.redirectTimer = null
+  },
+
+  async resumeGame() {
+    if (!this.isPageVisible || this.isRedirecting || this.isCheckingGame) return
+    this.isCheckingGame = true
+    try {
+      const result = await call('myActiveGame')
+      const game = result.game || result
+      const refreshIntervalMs = result.refreshIntervalMs || REFRESH_INTERVAL_MS
+      const redirectDelayMs = result.redirectDelayMs || ACTIVE_GAME_REDIRECT_DELAY_MS
+      if (!game || !game._id) return this.scheduleNextCheck(refreshIntervalMs)
+      this.isRedirecting = true
+      this.setData({ activeGameId: game._id })
+      this.stopResumeTimers()
+      const delay = Math.ceil(redirectDelayMs / 1000)
+      wx.showToast({ title: `你已经在一个对局里了，${delay} 秒后跳转`, icon: 'none', duration: redirectDelayMs })
+      this.redirectTimer = setTimeout(() => {
+        this.enterGame(game)
+      }, redirectDelayMs)
+    } catch (error) {
+      this.scheduleNextCheck(5000)
+    } finally {
+      this.isCheckingGame = false
+    }
+  },
+
+  scheduleNextCheck(interval) {
+    if (!this.isPageVisible || this.isRedirecting) return
+    clearTimeout(this.pollTimer)
+    this.pollTimer = setTimeout(() => {
+      this.pollTimer = null
+      this.resumeGame()
+    }, interval)
+  },
+
+  enterGame(game) {
+    const page = game.status === 'preparing' || game.status === 'starting' ? 'setup/setup' : 'table/table'
+    this.stopResumeTimers()
+    wx.reLaunch({
+      url: `/pages/${page}?gameId=${game._id}`,
+      fail: () => {
+        this.isRedirecting = false
+        this.scheduleNextCheck(5000)
+        wx.showToast({ title: '进入对局失败，请重试', icon: 'none' })
+      }
+    })
+  },
+
+  async createGame() {
+    try {
+      wx.showLoading({ title: '创建中' })
+      const name = await getProfile()
+      const game = await call('createGame', { name })
+      this.enterGame({ ...game, status: 'preparing' })
+    } catch (error) {
+      wx.showToast({ title: error.message, icon: 'none' })
+    } finally { wx.hideLoading() }
+  },
+
+  joinGame() {
+    if (this.data.inviteCode) return this.joinByCode(this.data.inviteCode)
+    wx.showModal({
+      title: '加入别人的局',
+      editable: true,
+      placeholderText: '输入好友的邀请码',
+      success: result => { if (result.confirm) this.joinByCode(result.content.trim().toUpperCase()) }
+    })
+  },
+
+  async joinByCode(inviteCode) {
+    if (!inviteCode) return wx.showToast({ title: '请输入邀请码', icon: 'none' })
+    try {
+      wx.showLoading({ title: '加入中' })
+      const name = await getProfile()
+      const game = await call('joinGame', { inviteCode, name })
+      this.enterGame({ ...game, status: 'preparing' })
+    } catch (error) {
+      wx.showToast({ title: error.message, icon: 'none' })
+    } finally { wx.hideLoading() }
+  }
+})
