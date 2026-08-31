@@ -21,6 +21,7 @@ Page({
   openIncoming() { this.setData({ modal: 'incoming' }) },
   openDetail() { this.setData({ modal: 'detail' }) },
   closeModal() { this.setData({ modal: '' }) },
+  stopModalTap() {},
   changeAmount(event) { this.setData({ amount: event.detail.value }) },
   confirmPayment() { this.setData({ modal: '' }) },
   acceptIncoming() { this.setData({ modal: '' }) },
