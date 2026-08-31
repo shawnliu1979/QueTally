@@ -1,7 +1,5 @@
 const { call, getProfile } = require('../../utils/game')
-
-const ACTIVE_GAME_REDIRECT_DELAY_MS = 3 * 1000
-const REFRESH_INTERVAL_MS = 5 * 1000
+const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS } = require('../../config')
 
 Page({
   data: { tagline: '', inviteCode: '', activeGameId: '' },
@@ -33,19 +31,17 @@ Page({
     try {
       const result = await call('myActiveGame')
       const game = result.game || result
-      const refreshIntervalMs = result.refreshIntervalMs || REFRESH_INTERVAL_MS
-      const redirectDelayMs = result.redirectDelayMs || ACTIVE_GAME_REDIRECT_DELAY_MS
-      if (!game || !game._id) return this.scheduleNextCheck(refreshIntervalMs)
+      if (!game || !game._id) return this.scheduleNextCheck(REFRESH_INTERVAL_MS)
       this.isRedirecting = true
       this.setData({ activeGameId: game._id })
       this.stopResumeTimers()
-      const delay = Math.ceil(redirectDelayMs / 1000)
-      wx.showToast({ title: `你已经在一个对局里了，${delay} 秒后跳转`, icon: 'none', duration: redirectDelayMs })
+      const delay = Math.ceil(ACTIVE_GAME_REDIRECT_DELAY_MS / 1000)
+      wx.showToast({ title: `你已经在一个对局里了，${delay} 秒后跳转`, icon: 'none', duration: ACTIVE_GAME_REDIRECT_DELAY_MS })
       this.redirectTimer = setTimeout(() => {
         this.enterGame(game)
-      }, redirectDelayMs)
+      }, ACTIVE_GAME_REDIRECT_DELAY_MS)
     } catch (error) {
-      this.scheduleNextCheck(5000)
+      this.scheduleNextCheck(REFRESH_INTERVAL_MS)
     } finally {
       this.isCheckingGame = false
     }
@@ -67,7 +63,7 @@ Page({
       url: `/pages/${page}?gameId=${game._id}`,
       fail: () => {
         this.isRedirecting = false
-        this.scheduleNextCheck(5000)
+        this.scheduleNextCheck(REFRESH_INTERVAL_MS)
         wx.showToast({ title: '进入对局失败，请重试', icon: 'none' })
       }
     })

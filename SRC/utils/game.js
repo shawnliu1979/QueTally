@@ -1,5 +1,6 @@
+const { REFRESH_INTERVAL_MS } = require('../config')
+
 const READ_ACTIONS = ['myActiveGame', 'getGame', 'getRound', 'getSettlement']
-const REFRESH_INTERVAL_MS = 5 * 1000
 const responseCache = new Map()
 const pendingCalls = new Map()
 

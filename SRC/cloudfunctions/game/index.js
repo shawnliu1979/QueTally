@@ -1,5 +1,5 @@
 const cloud = require('wx-server-sdk')
-const { MIN_MEMBERS_TO_START, START_COUNTDOWN_MS, JOINER_START_COUNTDOWN_MS, TRANSFER_CONFIRMATION_TIMEOUT_MS, ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS } = require('./config')
+const { MIN_MEMBERS_TO_START, START_COUNTDOWN_MS, TRANSFER_CONFIRMATION_TIMEOUT_MS } = require('./config')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
@@ -20,7 +20,6 @@ const activateStartedGame = async game => {
   }
   return game
 }
-const timing = { startCountdownMs: START_COUNTDOWN_MS, joinerStartCountdownMs: JOINER_START_COUNTDOWN_MS, refreshIntervalMs: REFRESH_INTERVAL_MS }
 const balance = (transfers, openId, initial) => transfers.filter(item => item.status === 'confirmed').reduce((total, item) => total + (item.toOpenId === openId ? item.amount : item.fromOpenId === openId ? -item.amount : 0), initial)
 const expire = async transfers => Promise.all(transfers.filter(item => item.status === 'pending' && item.expiresAt <= Date.now()).map(item => TRANSFER.doc(item._id).update({ data: { status: 'expired', updatedAt: Date.now() } })))
 const transfersFor = async gameId => { const result = await TRANSFER.where({ gameId }).orderBy('createdAt', 'desc').limit(100).get(); await expire(result.data); return (await TRANSFER.where({ gameId }).orderBy('createdAt', 'desc').limit(100).get()).data }
@@ -28,16 +27,14 @@ const publicRound = async (game, openId) => {
   const transfers = await transfersFor(game._id)
   const members = game.members.map(item => memberView(item, game))
   const own = members.find(item => item.openId === openId)
-  const map = item => {
-    const toMe = item.toOpenId === openId
-    const other = members.find(member => member.openId === (toMe ? item.fromOpenId : item.toOpenId))
-    const before = balance(transfers.filter(record => record.createdAt < item.createdAt), openId, game.initialScore)
-    return { ...item, toMe, fromName: members.find(member => member.openId === item.fromOpenId).name, direction: `${toMe ? other.name : '我'} → ${toMe ? '我' : other.name}`, signedAmount: `${toMe ? '+' : '-'} ${item.amount}`, type: toMe ? 'in' : 'out', before, after: toMe ? before + item.amount : before - item.amount, time: new Date(item.createdAt).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }), statusText: ({ pending: '确认中', confirmed: '已确认', rejected: '已拒绝', expired: '已超时' })[item.status] }
-  }
-  const relatedTransfers = transfers.filter(item => item.fromOpenId === openId || item.toOpenId === openId)
+  const relatedTransfers = transfers.filter(item => item.fromOpenId === openId || item.toOpenId === openId).map(item => {
+    const beforeBalance = balance(transfers.filter(record => record.createdAt < item.createdAt), openId, game.initialScore)
+    const delta = item.toOpenId === openId ? item.amount : -item.amount
+    return { ...item, beforeBalance, afterBalance: beforeBalance + delta }
+  })
   const confirmedBalance = balance(transfers, openId, game.initialScore)
   const lockedPoints = transfers.filter(item => item.fromOpenId === openId && item.status === 'pending').reduce((total, item) => total + item.amount, 0)
-  return { game: { ...game, members, isOwner: game.ownerOpenId === openId, timing }, myBalance: confirmedBalance - lockedPoints, confirmedBalance, others: members.filter(item => item.openId !== openId), transfers: relatedTransfers.map(map), pendingCount: transfers.filter(item => item.status === 'pending').length, me: own }
+  return { game: { ...game, members, isOwner: game.ownerOpenId === openId }, myBalance: confirmedBalance - lockedPoints, confirmedBalance, others: members.filter(item => item.openId !== openId), transfers: relatedTransfers, pendingCount: transfers.filter(item => item.status === 'pending').length, me: own }
 }
 
 exports.main = async event => {
@@ -46,7 +43,7 @@ exports.main = async event => {
     if (event.action === 'myActiveGame') {
       const result = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
       const game = await activateStartedGame(result.data[0])
-      return { ok: true, data: { game: game || null, redirectDelayMs: ACTIVE_GAME_REDIRECT_DELAY_MS, refreshIntervalMs: REFRESH_INTERVAL_MS } }
+      return { ok: true, data: game || null }
     }
     if (event.action === 'createGame') {
       const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
@@ -69,7 +66,7 @@ exports.main = async event => {
     }
     const game = await activateStartedGame(await getGame(event.gameId))
     assertMember(game, openId)
-    if (event.action === 'getGame') return { ok: true, data: { ...game, members: game.members.map(item => memberView(item, game)), isOwner: game.ownerOpenId === openId, timing } }
+    if (event.action === 'getGame') return { ok: true, data: { ...game, members: game.members.map(item => memberView(item, game)), isOwner: game.ownerOpenId === openId } }
     if (event.action === 'getRound') return { ok: true, data: await publicRound(game, openId) }
     if (event.action === 'startGame') {
       if (game.ownerOpenId !== openId) fail('只有发起人可以开始')

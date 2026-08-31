@@ -1,4 +1,6 @@
 const { call } = require('../../utils/game')
+const { REFRESH_INTERVAL_MS } = require('../../config')
+const { formatTransfers } = require('../../utils/round')
 
 Page({
   data: { gameId: '', round: null, modal: '', selectedPlayer: null, amount: '', incoming: null },
@@ -19,9 +21,11 @@ Page({
     try {
       const round = await call('getRound', { gameId: this.data.gameId })
       if (round.game.status !== 'active') return wx.reLaunch({ url: '/pages/home/home' })
-      const incoming = round.transfers.find(item => item.toMe && item.status === 'pending') || null
+      const transfers = formatTransfers(round.transfers, round.game.members, round.me.openId)
+      const incoming = transfers.find(item => item.toMe && item.status === 'pending') || null
+      round.transfers = transfers
       this.setData({ round, incoming })
-      this.scheduleNextRefresh(round.game.timing.refreshIntervalMs)
+      this.scheduleNextRefresh(REFRESH_INTERVAL_MS)
       if (incoming && !this.data.modal) this.setData({ modal: 'incoming' })
     } catch (error) { this.stopPolling(); wx.reLaunch({ url: '/pages/home/home' }) }
     finally { this.isRefreshing = false }

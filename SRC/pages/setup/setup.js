@@ -1,4 +1,5 @@
 const { call } = require('../../utils/game')
+const { JOINER_START_COUNTDOWN_MS, REFRESH_INTERVAL_MS } = require('../../config')
 
 Page({
   data: { gameId: '', game: null, players: [], score: '550', isOwner: false, countdown: 0, isStarting: false, isJoinerCountdown: false },
@@ -24,10 +25,10 @@ Page({
       if (game.status === 'starting') return this.startCountdown(Math.max(0, game.startsAt - Date.now()), false)
       if (game.status === 'active') {
         if (game.isOwner) return wx.redirectTo({ url: `/pages/table/table?gameId=${game._id}` })
-        return this.startCountdown(game.timing.joinerStartCountdownMs, true)
+        return this.startCountdown(JOINER_START_COUNTDOWN_MS, true)
       }
       this.setData({ isStarting: false, isJoinerCountdown: false, countdown: 0 })
-      this.scheduleNextRefresh(game.timing.refreshIntervalMs)
+      this.scheduleNextRefresh(REFRESH_INTERVAL_MS)
     } catch (error) { this.stopTimers(); wx.reLaunch({ url: '/pages/home/home' }) }
     finally { this.isRefreshing = false }
   },
