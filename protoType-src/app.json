@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/setup/setup",
+    "pages/table/table",
+    "pages/detail/detail",
+    "pages/settle/settle"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarBackgroundColor": "#f7f3e9",
+    "backgroundColor": "#f7f3e9"
+  },
+  "sitemapLocation": "sitemap.json"
+}

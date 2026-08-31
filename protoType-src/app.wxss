@@ -1,0 +1,80 @@
+page {
+  min-height: 100%;
+  background: #f7f3e9;
+  color: #1d302a;
+  font-family: "PingFang SC", "Hiragino Sans GB", sans-serif;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  line-height: inherit;
+  background: transparent;
+  border-radius: 0;
+}
+
+button::after {
+  border: 0;
+}
+
+.page-shell {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 44rpx 40rpx 72rpx;
+  background-image: linear-gradient(rgba(29, 48, 42, 0.025) 1px, transparent 1px);
+  background-size: 100% 18rpx;
+}
+
+.eyebrow {
+  color: #a13e2e;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+
+.page-title {
+  margin-top: 12rpx;
+  font-family: "Songti SC", "STSong", serif;
+  font-size: 58rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+
+.rule {
+  width: 72rpx;
+  height: 6rpx;
+  margin: 22rpx 0 38rpx;
+  background: #a13e2e;
+}
+
+.paper-card {
+  background: #fffdf6;
+  border: 2rpx solid #d8d0bd;
+  box-shadow: 8rpx 9rpx 0 rgba(29, 48, 42, 0.11);
+}
+
+.primary-action, .secondary-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 96rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+
+.primary-action {
+  color: #fffdf6;
+  background: #1d4b3e;
+}
+
+.secondary-action {
+  color: #1d4b3e;
+  border: 2rpx solid #1d4b3e;
+}
+
+.note {
+  color: #788078;
+  font-size: 24rpx;
+}

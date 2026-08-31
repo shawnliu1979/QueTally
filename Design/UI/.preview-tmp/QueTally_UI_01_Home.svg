@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1334" height="1334" viewBox="0 0 750 1334" preserveAspectRatio="xMidYMid meet">
+  <rect x="0" y="0" width="750" height="1334" rx="0" fill="#e7e0cf" stroke="none" stroke-width="2"/>
+  <rect x="60" y="34" width="630" height="1266" rx="48" fill="#26352f" stroke="none" stroke-width="2"/>
+  <rect x="74" y="48" width="602" height="1238" rx="34" fill="#f7f3e9" stroke="none" stroke-width="2"/>
+  <rect x="293" y="48" width="164" height="26" rx="0" fill="#26352f" stroke="none" stroke-width="2"/>
+  <text x="118" y="132" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="17" fill="#a13e2e" font-weight="700" text-anchor="start">QUE TALLY</text>
+  <text x="118" y="178" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="43" fill="#1d302a" font-weight="700" text-anchor="start">雀帐</text>
+  <rect x="118" y="201" width="55" height="5" rx="0" fill="#a13e2e" stroke="none" stroke-width="2"/>
+  <rect x="118" y="276" width="74" height="74" rx="0" fill="#fffdf6" stroke="#a13e2e" stroke-width="2"/><text x="155" y="330" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="46" fill="#a13e2e" font-weight="700" text-anchor="middle">雀</text><text x="118" y="471" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="27" fill="#4a5d54" font-weight="400" text-anchor="start">一局牌，一本清楚的帐。</text><rect x="118" y="914" width="514" height="74" rx="0" fill="#1d4b3e" stroke="none" stroke-width="2"/><text x="375" y="962" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="26" fill="#fffdf6" font-weight="700" text-anchor="middle">组一个局</text><rect x="118" y="1010" width="514" height="74" rx="0" fill="#fffdf6" stroke="#1d4b3e" stroke-width="2"/><text x="375" y="1058" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="26" fill="#1d4b3e" font-weight="700" text-anchor="middle">加入别人</text><text x="375" y="1158" font-family="/System/Library/Fonts/Hiragino Sans GB.ttc" font-size="18" fill="#8c918a" font-weight="400" text-anchor="middle">仅作娱乐记分使用</text>
+  
+  </svg>

@@ -1,0 +1,23 @@
+<view class="page-shell">
+  <view class="eyebrow">ROUND SETTINGS</view>
+  <view class="page-title">确认本局</view>
+  <view class="rule"></view>
+  <view class="section-label">本局成员</view>
+  <view class="paper-card players-card">
+    <view class="player-row" wx:for="{{players}}" wx:key="name">
+      <view class="avatar {{item.tone}}">{{item.glyph}}</view>
+      <view class="player-name">{{item.name}}</view>
+      <view class="player-mark">{{item.mark}}</view>
+    </view>
+  </view>
+  <view class="section-label score-label">初始点数</view>
+  <view class="paper-card score-card">
+    <input class="score-input" type="number" value="{{score}}" disabled="{{isViewer}}" bindinput="changeScore" />
+    <view class="score-unit">点 / 人</view>
+  </view>
+  <view wx:if="{{isViewer}}" class="wait-tip">等待发起人开始本局</view>
+  <view class="setup-actions">
+    <button class="primary-action {{isViewer ? 'action-disabled' : ''}}" bindtap="startGame">{{isViewer ? '开始（等待中）' : '开始'}}</button>
+    <button class="secondary-action" bindtap="cancel">取消</button>
+  </view>
+</view>
