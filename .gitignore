@@ -155,3 +155,5 @@ miniprogram_npm/
 .vscode/
 *.swp
 dist/
+
+.cloudbase/

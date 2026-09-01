@@ -68,7 +68,8 @@ exports.main = async event => {
     if (event.action === 'saveMyProfile') {
       const profile = profileFromEvent(event.profile)
       if (!profile.avatarUrl) fail('请选择头像')
-      await PROFILE.doc(openId).set({ data: { openId, ...profile, updatedAt: Date.now() } })
+      const existingProfile = await getProfile(openId)
+      await PROFILE.doc(openId).set({ data: { openId, ...profile, createdAt: existingProfile ? existingProfile.createdAt : Date.now(), updatedAt: Date.now() } })
       return { ok: true, data: profile }
     }
     if (event.action === 'myActiveGame') {
