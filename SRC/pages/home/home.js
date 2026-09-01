@@ -1,8 +1,8 @@
 const { call, getStoredProfile, saveProfile, uploadAvatar } = require('../../utils/game')
-const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS } = require('../../config')
+const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS, APL_VERSION } = require('../../config')
 
 Page({
-  data: { tagline: '', inviteCode: '', activeGameId: '', profileAction: '', profileName: '', profileAvatarUrl: '', pendingInviteCode: '' },
+  data: { tagline: '', inviteCode: '', activeGameId: '', profileAction: '', profileName: '', profileAvatarUrl: '', pendingInviteCode: '', aplVersion: APL_VERSION },
 
   onLoad(options) {
     const taglines = ['一局有终，心中有数。', '牌有起落，心有分寸。', '输赢一时，情谊一局。', '一桌相逢，尽兴便好。', '点数归零，笑意长留。', '落子有声，来去从容。']

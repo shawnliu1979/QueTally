@@ -2,7 +2,6 @@
   "description": "QueTally",
   "compileType": "miniprogram",
   "libVersion": "3.17.2",
-  "appid": "wx7fd94414635bc900",
   "projectname": "quetally",
   "cloudfunctionRoot": "cloudfunctions/",
   "setting": {
