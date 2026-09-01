@@ -145,6 +145,7 @@ vite.config.ts.timestamp-*
 # ---- 微信小程序专属 ----
 # 个人本地配置：每个开发者不同（appid 覆盖、本地路径），绝不能提交
 project.private.config.json
+config.private.js
 
 # 构建产物（npm 构建后生成）
 miniprogram_npm/

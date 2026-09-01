@@ -1,3 +1,5 @@
+const { cloudEnvId } = require('./config.private')
+
 App({
   globalData: {
     cloudReady: false
@@ -14,7 +16,7 @@ App({
     }
 
     wx.cloud.init({
-      env: 'cloud1-d2g5q7nvb4dab7365',
+      env: cloudEnvId,
       traceUser: true
     })
     this.globalData.cloudReady = true
