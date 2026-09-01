@@ -12,6 +12,7 @@
 				src="{{item.avatarDisplayUrl}}"
 				mode="aspectFill"
 				data-index="{{index}}"
+				data-open-id="{{item.openId}}"
 				binderror="fallbackAvatar"
 			/>
 			<view wx:else class="avatar {{item.tone}}">{{item.glyph}}</view>
