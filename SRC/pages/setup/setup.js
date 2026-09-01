@@ -21,7 +21,13 @@ Page({
     this.isRefreshing = true
     try {
       const game = await call('getGame', { gameId: this.data.gameId })
-      game.members = game.members.map(member => ({ ...member, avatarDisplayUrl: avatarDisplayUrl(member.avatarUrl) }))
+      if (!this.memberAvatarCache) this.memberAvatarCache = {}
+      game.members = game.members.map(member => {
+        if (!(member.openId in this.memberAvatarCache)) {
+          this.memberAvatarCache[member.openId] = avatarDisplayUrl(member.avatarUrl)
+        }
+        return { ...member, avatarDisplayUrl: this.memberAvatarCache[member.openId] }
+      })
       this.setData({ game, players: game.members, score: String(game.initialScore), isOwner: game.isOwner })
       if (game.status === 'starting') return this.startCountdown(Math.max(0, game.startsAt - Date.now()))
       if (game.status === 'active') return wx.redirectTo({ url: `/pages/table/table?gameId=${game._id}` })
@@ -62,6 +68,8 @@ Page({
 
   fallbackAvatar(event) {
     const index = event.currentTarget.dataset.index
+    const openId = event.currentTarget.dataset.openId
+    this.memberAvatarCache[openId] = ''
     this.setData({ [`players[${index}].avatarDisplayUrl`]: '' })
   },
 
