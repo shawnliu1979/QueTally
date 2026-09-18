@@ -11,7 +11,7 @@
 
 `profiles` 以用户 `openid` 保存一次性确认的昵称和 CloudBase 头像文件 ID；`games` 嵌入最多五名成员；`transfers` 一笔划转一条记录。划转有 `pending`、`confirmed`、`rejected`、`expired` 四种状态，待确认记录在两分钟后由后续轮询自动标记超时。
 
-`cleanup` 云函数的定时触发器会在每周日 UTC+8 03:00 运行：当已取消或已结算的局超过 100 条时，按 `updatedAt` 删除最旧的 100 条及其全部 `transfers`；同时删除创建超过 30 天的 `profiles` 记录。
+每次用户进入小程序读取个人资料时，云函数会刷新该资料的 `updatedAt`。`cleanup` 云函数的定时触发器会在每周日 UTC+8 03:00 运行：当已取消或已结算的局超过 100 条时，按 `updatedAt` 删除最旧的 100 条及其全部 `transfers`；同时删除 `updatedAt` 超过 30 天且不属于有效局（`preparing`、`starting`、`active`）的 `profiles` 记录。
 
 微信小程序不提供可取得微信好友 ID 的通用好友选择器。因此发起人通过原生微信分享发送邀请码，好友由分享链接或邀请码加入，成员身份仍以 CloudBase 自动注入的 `openid` 校验。
 

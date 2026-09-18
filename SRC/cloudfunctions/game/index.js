@@ -6,7 +6,7 @@ const _ = db.command
 const GAME = db.collection('games')
 const PROFILE = db.collection('profiles')
 const TRANSFER = db.collection('transfers')
-const ACTIVE = ['preparing', 'starting', 'active']
+const ACTIVE_GAME_STATUSES = ['preparing', 'starting', 'active']
 const TONES = ['green', 'red', 'yellow', 'blue', 'green']
 
 const fail = message => { throw new Error(message) }
@@ -64,21 +64,24 @@ const publicRound = async (game, openId) => {
 exports.main = async event => {
   const { OPENID: openId } = cloud.getWXContext()
   try {
-    if (event.action === 'getMyProfile') return { ok: true, data: await getProfile(openId) }
+    if (event.action === 'getMyProfile') {
+      const profile = await getProfile(openId)
+      if (profile) await PROFILE.doc(openId).update({ data: { updatedAt: Date.now() } })
+      return { ok: true, data: profile }
+    }
     if (event.action === 'saveMyProfile') {
       const profile = profileFromEvent(event.profile)
-      if (!profile.avatarUrl) fail('请选择头像')
       const existingProfile = await getProfile(openId)
       await PROFILE.doc(openId).set({ data: { openId, ...profile, createdAt: existingProfile ? existingProfile.createdAt : Date.now(), updatedAt: Date.now() } })
       return { ok: true, data: profile }
     }
     if (event.action === 'myActiveGame') {
-      const result = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
+      const result = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE_GAME_STATUSES) }).limit(1).get()
       const game = await activateStartedGame(result.data[0])
       return { ok: true, data: game || null }
     }
     if (event.action === 'createGame') {
-      const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
+      const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE_GAME_STATUSES) }).limit(1).get()
       if (existing.data.length) fail('你还在一个未结束的局里')
       const profile = await getProfile(openId)
       if (!profile) fail('请先完成个人资料设置')
@@ -87,7 +90,7 @@ exports.main = async event => {
       return { ok: true, data: { _id: result._id } }
     }
     if (event.action === 'joinGame') {
-      const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE) }).limit(1).get()
+      const existing = await GAME.where({ memberOpenIds: _.all([openId]), status: _.in(ACTIVE_GAME_STATUSES) }).limit(1).get()
       if (existing.data.length) fail('你还在一个未结束的局里')
       const result = await GAME.where({ inviteCode: event.inviteCode, status: 'preparing' }).limit(1).get()
       const game = result.data[0]

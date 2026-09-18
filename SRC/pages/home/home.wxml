@@ -17,9 +17,18 @@
 				<image wx:if="{{profileAvatarUrl}}" class="profile-avatar" src="{{profileAvatarUrl}}" mode="aspectFill" />
 				<view wx:else class="profile-avatar-placeholder">选头像</view>
 			</button>
-			<input class="profile-name-input" type="nickname" placeholder="输入昵称" value="{{profileName}}" bindinput="changeProfileName" />
+			<input
+				class="profile-name-input"
+				type="nickname"
+				placeholder="输入昵称"
+				value="{{profileName}}"
+				bindinput="changeProfileName"
+				bindblur="changeProfileName"
+				bindconfirm="changeProfileName"
+			/>
 			<view class="profile-actions">
-				<button class="primary-action profile-submit" bindtap="submitProfile">确认</button>
+				<button class="secondary-action profile-button" bindtap="enterAsGuest">游客进入</button>
+				<button class="primary-action profile-submit" bindtap="confirmProfile">确认</button>
 			</view>
 		</view>
 	</view>

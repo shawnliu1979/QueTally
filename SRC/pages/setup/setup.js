@@ -4,7 +4,11 @@ const { REFRESH_INTERVAL_MS } = require('../../config')
 Page({
   data: { gameId: '', game: null, players: [], score: '550', isOwner: false, countdown: 0, isStarting: false },
 
-  onLoad(options) { this.setData({ gameId: options.gameId }); this.refresh() },
+  onLoad(options) {
+    wx.showShareMenu({ withShareTicket: false })
+    this.setData({ gameId: options.gameId })
+    this.refresh()
+  },
   onShow() { this.isPageVisible = true; if (this.data.gameId) this.refresh() },
   onHide() { this.isPageVisible = false; this.stopTimers() },
   onUnload() { this.isPageVisible = false; this.stopTimers() },
@@ -92,8 +96,13 @@ Page({
   },
 
   onShareAppMessage() {
-    const { game } = this.data
-    return { title: '邀你加入一局雀帐', path: `/pages/home/home?invite=${game.inviteCode}` }
+    const game = this.data.game || {}
+    const inviteCode = typeof game.inviteCode === 'string' ? game.inviteCode.trim() : ''
+    const path = inviteCode ? `/pages/home/home?invite=${encodeURIComponent(inviteCode)}` : '/pages/home/home'
+    return {
+      title: inviteCode ? '邀你加入一局雀帐' : '打开雀帐',
+      path
+    }
   },
 
   async cancel() {

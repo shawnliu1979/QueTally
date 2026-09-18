@@ -1,10 +1,24 @@
 const { call, getStoredProfile, saveProfile, uploadAvatar } = require('../../utils/game')
-const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS, APL_VERSION } = require('../../config')
+const { ACTIVE_GAME_REDIRECT_DELAY_MS, REFRESH_INTERVAL_MS, DEBUG_MODE, APL_VERSION } = require('../../config')
 
 Page({
   data: { tagline: '', inviteCode: '', activeGameId: '', profileAction: '', profileName: '', profileAvatarUrl: '', pendingInviteCode: '', aplVersion: APL_VERSION },
 
+  debugModal(title, detail) {
+    if (!DEBUG_MODE) return
+    wx.showModal({
+      title,
+      content: typeof detail === 'string' ? detail : JSON.stringify(detail),
+      showCancel: false
+    })
+  },
+
   onLoad(options) {
+    this.debugModal('首页 onLoad', {
+      options,
+      invite: options && options.invite,
+      scene: options && options.scene
+    })
     const taglines = ['一局有终，心中有数。', '牌有起落，心有分寸。', '输赢一时，情谊一局。', '一桌相逢，尽兴便好。', '点数归零，笑意长留。', '落子有声，来去从容。']
     this.setData({
       tagline: taglines[Math.floor(Math.random() * taglines.length)],
@@ -16,6 +30,23 @@ Page({
 
   onShow() {
     this.isPageVisible = true
+    const app = getApp()
+    this.debugModal('首页 onShow', {
+      inviteCode: this.data.inviteCode,
+      pendingInviteCode: this.data.pendingInviteCode,
+      appPendingInviteCode: app.globalData.pendingInviteCode
+    })
+    const pendingInviteCode = app.globalData.pendingInviteCode
+    if (pendingInviteCode && pendingInviteCode !== this.data.pendingInviteCode) {
+      app.globalData.pendingInviteCode = ''
+      this.setData({ inviteCode: pendingInviteCode, pendingInviteCode })
+      if (this.isProfileReady && this.profile && this.profile.avatarUrl) {
+        this.joinWithProfile(pendingInviteCode)
+        return
+      }
+      this.setData({ profileAction: 'profile' })
+      return
+    }
     if (this.isProfileReady && !this.data.profileAction && !this.data.inviteCode) this.resumeGame()
   },
 
@@ -62,11 +93,19 @@ Page({
   },
 
   enterGame(game) {
+    this.debugModal('准备进入对局', game)
+    if (!game || !game._id) {
+      this.debugModal('进入失败', '加入成功但缺少对局编号')
+      wx.showToast({ title: '加入成功但缺少对局编号', icon: 'none' })
+      return
+    }
     const page = game.status === 'preparing' || game.status === 'starting' ? 'setup/setup' : 'table/table'
     this.stopResumeTimers()
     wx.reLaunch({
       url: `/pages/${page}?gameId=${game._id}`,
+      success: () => this.debugModal('跳转成功', `/pages/${page}?gameId=${game._id}`),
       fail: () => {
+        this.debugModal('跳转失败', `/pages/${page}?gameId=${game._id}`)
         this.isRedirecting = false
         this.scheduleNextCheck(REFRESH_INTERVAL_MS)
         wx.showToast({ title: '进入对局失败，请重试', icon: 'none' })
@@ -75,22 +114,36 @@ Page({
   },
 
   async loadProfile() {
+    this.debugModal('loadProfile', {
+      pendingInviteCode: this.data.pendingInviteCode,
+      inviteCode: this.data.inviteCode
+    })
     try {
-      const profile = await call('getMyProfile')
+      const [profile, activeGame] = await Promise.all([call('getMyProfile'), call('myActiveGame')])
       this.isProfileReady = true
-      if (profile) {
-        saveProfile(profile)
-        this.profile = profile
-        this.setData({ profileAction: '', profileName: profile.name, profileAvatarUrl: profile.avatarUrl })
+      const cachedProfile = getStoredProfile()
+      const currentProfile = profile || cachedProfile
+      if (currentProfile) {
+        saveProfile(currentProfile)
+        this.profile = currentProfile
+      }
+      if (activeGame && activeGame._id) {
+        this.setData({ profileAction: '', profileName: currentProfile ? currentProfile.name : '', profileAvatarUrl: currentProfile ? currentProfile.avatarUrl : '' })
+        if (this.isPageVisible) this.resumeGame()
+        return
+      }
+
+      if (currentProfile && currentProfile.avatarUrl) {
+        this.setData({ profileAction: '', profileName: currentProfile.name, profileAvatarUrl: currentProfile.avatarUrl })
         if (this.data.pendingInviteCode) return this.joinWithProfile(this.data.pendingInviteCode)
         if (this.isPageVisible) this.resumeGame()
         return
       }
-      const cachedProfile = getStoredProfile()
+
       this.setData({
         profileAction: 'profile',
-        profileName: cachedProfile ? cachedProfile.name : '',
-        profileAvatarUrl: cachedProfile ? cachedProfile.avatarUrl : ''
+        profileName: currentProfile ? currentProfile.name : '',
+        profileAvatarUrl: currentProfile ? currentProfile.avatarUrl : ''
       })
     } catch (error) {
       wx.showToast({ title: '无法读取个人资料，请检查网络', icon: 'none' })
@@ -98,16 +151,29 @@ Page({
   },
 
   chooseAvatar(event) { this.setData({ profileAvatarUrl: event.detail.avatarUrl }) },
-  changeProfileName(event) { this.setData({ profileName: event.detail.value }) },
+  changeProfileName(event) {
+    const value = event.detail.value || event.detail.nickname || ''
+    this.profileNameInput = value
+    this.setData({ profileName: value })
+  },
 
-  async submitProfile() {
+  enterAsGuest() {
+    const guestName = `游客${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`
+    this.submitProfile(true, guestName)
+  },
+
+  confirmProfile() {
+    this.submitProfile(false)
+  },
+
+  async submitProfile(isGuest = false, guestName = '') {
     const { profileName, profileAvatarUrl, pendingInviteCode } = this.data
-    const name = profileName.trim()
-    if (!profileAvatarUrl) return wx.showToast({ title: '请选择头像', icon: 'none' })
+    const name = isGuest ? guestName.trim() : String(this.profileNameInput || profileName || '').trim()
     if (!name) return wx.showToast({ title: '请输入昵称', icon: 'none' })
+    if (!isGuest && !profileAvatarUrl) return wx.showToast({ title: '请选择头像，或以游客身份进入', icon: 'none' })
     try {
       wx.showLoading({ title: '保存资料' })
-      const profile = { name, avatarUrl: await uploadAvatar(profileAvatarUrl) }
+      const profile = { name, avatarUrl: isGuest ? '' : await uploadAvatar(profileAvatarUrl) }
       await call('saveMyProfile', { profile })
       saveProfile(profile)
       this.profile = profile
@@ -160,11 +226,14 @@ Page({
     if (this.isManualEntry) return
     this.isManualEntry = true
     this.stopResumeTimers()
+    this.debugModal('开始加入', `邀请码：${inviteCode}`)
     try {
       wx.showLoading({ title: '加入中' })
       const game = await call('joinGame', { inviteCode })
+      this.debugModal('加入返回', game)
       this.enterGame({ ...game, status: 'preparing' })
     } catch (error) {
+      this.debugModal('加入失败', error.message || String(error))
       this.isManualEntry = false
       wx.showToast({ title: error.message, icon: 'none' })
       this.scheduleNextCheck(REFRESH_INTERVAL_MS)
